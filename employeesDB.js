@@ -96,37 +96,47 @@ async function addEmployee() {
         const queryRoles = await connection.query("SELECT id, title FROM role",
             function (err, res) {
                 if (err) throw err;
-                res.map((row) => {
-                    roleArray.push({ id: row.id, title: row.title });
-                });
+                res.map(row => { roleArray.push({ id: row.id, title: row.title }); });
             });
 
         const queryNames = await connection.query("SELECT id, CONCAT(first_name, ' ', last_name) AS name FROM employee",
             function (err, res) {
                 if (err) throw err;
-                res.map((row) => {
-                    nameArray.push({ id: row.id, name: row.name });
-                });
+                res.map(row => { nameArray.push({ id: row.id, name: row.name }); });
             });
 
         const userInput = await inquirer.prompt([
             {
                 type: "input",
                 name: "empFirstName",
-                message: "What is the employee's first name?"
+                message: "What is the employee's first name?",
+                validate: function (value) {
+                    const pass = value.match(/^[a-zA-Z]{2,30}$/);
+                    if (pass) return true;
+                    else return "Please enter a valid name. Press upwards arrow to re-enter your value";
+                },
+                filter: function (value) {
+                    return value.charAt(0).toUpperCase() + value.substring(1);
+                }
             },
             {
                 type: "input",
                 name: "empLastName",
-                message: "What is the employee's last name?"
+                message: "What is the employee's last name?",
+                validate: function (value) {
+                    const pass = value.match(/^[a-zA-Z]{2,30}$/);
+                    if (pass) return true;
+                    else return "Please enter a valid name. Press upwards arrow to re-enter your value";
+                },
+                filter: function (value) {
+                    return value.charAt(0).toUpperCase() + value.substring(1);
+                }
             },
             {
                 type: "list",
                 name: "empRole",
                 choices: function () {
-                    const titleOnly = roleArray.map(role => {
-                        return role.title;
-                    });
+                    const titleOnly = roleArray.map(role => { return role.title; });
                     return titleOnly;
                 },
                 message: "What is the employee's role?"
@@ -135,28 +145,25 @@ async function addEmployee() {
                 type: "list",
                 name: "empManager",
                 choices: function () {
-                    const nameOnly = nameArray.map(name => {
-                        return name.name;
-                    });
+                    const nameOnly = nameArray.map(name => { return name.name; });
                     return nameOnly;
                 },
                 message: "Who is the employee's Manager?",
             }
-        ])
-            .then(function (answer) {
-                connection.query("INSERT INTO employee SET ?",
-                    {
-                        first_name: answer.empFirstName,
-                        last_name: answer.empLastName,
-                        role_id: roleArray.find(role => role.title === answer.empRole).id,
-                        manager_id: nameArray.find(manager => manager.name === answer.empManager).id
-                    },
-                    function (err) {
-                        if (err) throw err;
-                        start();
-                    }
-                );
-            });
+        ]).then(function (answer) {
+            connection.query("INSERT INTO employee SET ?",
+                {
+                    first_name: answer.empFirstName,
+                    last_name: answer.empLastName,
+                    role_id: roleArray.find(role => role.title === answer.empRole).id,
+                    manager_id: nameArray.find(manager => manager.name === answer.empManager).id
+                },
+                function (err) {
+                    if (err) throw err;
+                    start();
+                }
+            );
+        });
     } catch (e) {
         console.log('error', e);
     }
