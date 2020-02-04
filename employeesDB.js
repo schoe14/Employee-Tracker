@@ -8,7 +8,7 @@ const connection = mysql.createConnection({
     // Your username
     user: "root",
     // Your password
-    password: "",
+    password: "Mintforme15_",
     database: "employees_DB"
 });
 
@@ -19,7 +19,7 @@ connection.connect(function (err) {
 });
 
 function start() {
-    inquirer.prompt([
+    inquirer.prompt(
         {
             type: "list",
             name: "main_menu",
@@ -27,7 +27,7 @@ function start() {
             choices: ["View All Employees", "View Departments", "View Roles", "Add Employee", "Add Department", "Add Role", "Update Employee Roles", "Exit"]
             // "Update Employee Manager", "View All Employees By Department", "View All Employees By Manager", "Remove Employee"
         }
-    ]).then(function (answer) {
+    ).then(function (answer) {
         switch (answer.main_menu) {
             case "View All Employees":
                 viewAllEmployees();
@@ -41,11 +41,18 @@ function start() {
             case "Add Employee":
                 addEmployee();
                 break;
+            case "Add Department":
+                addDepartment();
+                break;
             case "Exit":
                 connection.end();
                 break;
         }
     })
+}
+
+function addDepartment() {
+    connection.end();
 }
 
 function viewAllEmployees() {
@@ -67,7 +74,7 @@ function viewDepartments() {
             console.table(res);
             start();
         }
-    )
+    );
 }
 
 function viewRoles() {
@@ -78,66 +85,79 @@ function viewRoles() {
             console.table(res);
             start();
         }
-    )
+    );
 }
 
 async function addEmployee() {
-    const roleArray = [];
-    const nameArray = ["None"];
-    const queryRoles = await connection.query("SELECT title FROM role",
-        function (err, res) {
-            if (err) throw err;
-            res.map((role) => {
-                roleArray.push(role.title);
-            })
-        })
-    const queryNames = await connection.query("SELECT CONCAT(first_name, ' ', last_name) AS name FROM employee",
-        function (err, res) {
-            if (err) throw err;
-            res.map((name) => {
-                nameArray.push(name.name)
-            })
-        })
-    const userInput = await inquirer.prompt([
-        {
-            type: "input",
-            name: "empFirstName",
-            message: "What is the employee's first name?"
-        },
-        {
-            type: "input",
-            name: "empLastName",
-            message: "What is the employee's last name?"
-        },
-        {
-            type: "list",
-            name: "empRole",
-            message: "What is the employee's role?",
-            choices: roleArray
-        },
-        {
-            type: "list",
-            name: "empManager",
-            message: "Who is the employee's Manager?",
-            choices: nameArray
-        }
-    ])
-    console.log(userInput);
-    // .then(connection.query(
-    //     connection.end()
-    //             "INSERT INTO employee SET ?",
-    //     {
-    //         first_name:
-    //             last_name:
-    //         role_id:
-    //             manager_id:
-    //     },
-    //     function (err, res) {
-    //         if (err) throw err;
-    //         console.table(res);
-    //         start();
-    //     }
-    // ))
-    //     )
-    connection.end();
+    try {
+        const roleArray = [];
+        const nameArray = [{ id: null, name: "None" }];
+
+        const queryRoles = await connection.query("SELECT id, title FROM role",
+            function (err, res) {
+                if (err) throw err;
+                res.map((row) => {
+                    roleArray.push({ id: row.id, title: row.title });
+                });
+            });
+
+        const queryNames = await connection.query("SELECT id, CONCAT(first_name, ' ', last_name) AS name FROM employee",
+            function (err, res) {
+                if (err) throw err;
+                res.map((row) => {
+                    nameArray.push({ id: row.id, name: row.name });
+                });
+            });
+
+        const userInput = await inquirer.prompt([
+            {
+                type: "input",
+                name: "empFirstName",
+                message: "What is the employee's first name?"
+            },
+            {
+                type: "input",
+                name: "empLastName",
+                message: "What is the employee's last name?"
+            },
+            {
+                type: "list",
+                name: "empRole",
+                choices: function () {
+                    const titleOnly = roleArray.map(role => {
+                        return role.title;
+                    });
+                    return titleOnly;
+                },
+                message: "What is the employee's role?"
+            },
+            {
+                type: "list",
+                name: "empManager",
+                choices: function () {
+                    const nameOnly = nameArray.map(name => {
+                        return name.name;
+                    });
+                    return nameOnly;
+                },
+                message: "Who is the employee's Manager?",
+            }
+        ])
+            .then(function (answer) {
+                connection.query("INSERT INTO employee SET ?",
+                    {
+                        first_name: answer.empFirstName,
+                        last_name: answer.empLastName,
+                        role_id: roleArray.find(role => role.title === answer.empRole).id,
+                        manager_id: nameArray.find(manager => manager.name === answer.empManager).id
+                    },
+                    function (err) {
+                        if (err) throw err;
+                        start();
+                    }
+                );
+            });
+    } catch (e) {
+        console.log('error', e);
+    }
 }
