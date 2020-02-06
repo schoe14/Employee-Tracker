@@ -7,9 +7,7 @@ const connection = mysql.createConnection({
     host: "localhost",
     // Your port; if not 3306
     port: 3306,
-    // Your username
     user: "root",
-    // Your password
     password: "Mintforme15_",
     database: "employees_DB"
 });
@@ -26,8 +24,8 @@ function start() {
             type: "list",
             name: "main_menu",
             message: "What would you like to do?",
-            choices: ["View All Employees", "View All Employees By Department", "View All Employees By Manager", "View Departments", "View Roles", "Add Employee", "Add Department", "Add Role", "Update Employee Role", "Exit"]
-            // "Update Employee Manager", , , "Remove Employee"
+            choices: ["View All Employees", "View All Employees By Department", "View All Employees By Manager", "View Departments", "View Roles", "Add Employee", "Add Department", "Add Role", "Update Employee Role", "Update Employee Manager", "Remove Employee", "Remove Department", "Remove Role", "Exit"]
+            // View the Total Utilized Budget of a Department
         }
     ).then(function (answer) {
         switch (answer.main_menu) {
@@ -48,7 +46,13 @@ function start() {
                 addRole(answer.main_menu); //done
                 break;
             case "Update Employee Role":
-                updateEmployeeRole(answer.main_menu); //done
+            case "Update Employee Manager":
+                update(answer.main_menu); //done
+                break;
+            case "Remove Employee":
+            case "Remove Department":
+            case "Remove Role":
+                remove(answer.main_menu); //done
                 break;
             case "Exit":
                 connection.end();
@@ -135,7 +139,7 @@ function addRole(mainAnswer) {
     });
 }
 
-function updateEmployeeRole(mainAnswer) {
+function update(mainAnswer) {
     const query = new Query(mainAnswer).queryResult;
     console.log(query);
     connection.query(query, function (err, res) {
@@ -143,42 +147,63 @@ function updateEmployeeRole(mainAnswer) {
         inquirer.prompt([
             {
                 type: "list",
-                name: "name",
+                name: "id",
                 choices: function () {
                     const nameArray = [];
-                    res.map(row => {
-                        if (row.name != null) nameArray.push(row.name);
-                    });
+                    res.map(row => { if (row.name != null) nameArray.push(row.name); });
                     return nameArray;
                 },
-                message: "Who would like to update his/her role?"
+                message: "Who would like to update?"
             },
             {
                 type: "list",
-                name: "title",
+                name: "changeTo_id",
                 choices: function () {
                     let titleArray = [];
-                    res.map(row => {
-                        if (row.title != null) titleArray.push(row.title);
-                    });
+                    res.map(row => { if (row.title != null) titleArray.push(row.title); });
                     titleArray = titleArray.filter((item, index) => {
                         return titleArray.indexOf(item) === index;
                     });
                     return titleArray;
                 },
-                message: "Which role would like to update to?"
+                message: "Which role would like to update to?",
+                when: function () {
+                    return mainAnswer === "Update Employee Role";
+                }
+            },
+            {
+                type: "list",
+                name: "changeTo_id",
+                choices: function () {
+                    const nameArray = [];
+                    res.map(row => { if (row.name != null) nameArray.push(row.name); });
+                    return nameArray;
+                },
+                message: "Who would like to update as a new manager?",
+                when: function () {
+                    return mainAnswer === "Update Employee Manager";
+                }
             }
         ])
             .then(function (answer) {
-                let employee_id, role_id;
-                res.map(row => {
-                    if (row.name === answer.name) employee_id = row.e_id;
-                    if (row.title === answer.title) role_id = row.role_id;
-                });
-                console.log(`e.id = ${employee_id}, role.id = ${role_id}`);
-                const query = new Query("queryUpdateRole").queryResult;
+                let query;
+                if (mainAnswer === "Update Employee Role") {
+                    res.map(row => {
+                        if (row.name === answer.id) answer.id = row.e_id;
+                        if (row.title === answer.changeTo_id) answer.changeTo_id = row.role_id;
+                    });
+                    query = new Query("queryUpdateRole").queryResult;
+                }
+                else {
+                    res.map(row => {
+                        if (row.name === answer.id) answer.id = row.e_id;
+                        if (row.name === answer.changeTo_id) answer.changeTo_id = row.e_id;
+                    });
+                    query = new Query("queryUpdateManager").queryResult;
+                }
+                console.log(answer);
                 console.log(query);
-                connection.query(query, [{ role_id: role_id }, { id: employee_id }], function (err) {
+                connection.query(query, [answer.changeTo_id, answer.id], function (err) {
                     if (err) throw err;
                     start();
                 });
@@ -195,7 +220,7 @@ function view(mainAnswer) {
             inquirer.prompt([
                 {
                     type: "list",
-                    name: "queryViewByDepartName",
+                    name: "departName",
                     choices: function () {
                         let departNames = [];
                         res.map(row => { if (row.department != null) departNames.push(row.department); });
@@ -211,7 +236,7 @@ function view(mainAnswer) {
                 },
                 {
                     type: "list",
-                    name: "queryViewByManagerName",
+                    name: "managerName",
                     choices: function () {
                         let managerNames = [];
                         res.map(row => { if (row.manager != null) managerNames.push(row.manager); });
@@ -227,20 +252,18 @@ function view(mainAnswer) {
                 }
             ])
                 .then(function (answer) {
-                    const query = new Query(Object.keys(answer).toString()).queryResult;
-                    console.log(query);
+                    // const query = new Query(Object.keys(answer).toString()).queryResult;
 
                     let data;
                     if (mainAnswer === "View All Employees By Department") {
-                        data = ` WHERE name = "${answer.queryViewByDepartName}"`;
+                        data = ` WHERE name = "${answer.departName}"`;
                     }
                     else {
-                        data = ` WHERE SOUNDEX(CONCAT(m.first_name, ' ', m.last_name)) = SOUNDEX("${answer.queryViewByManagerName}") ORDER BY role.id`;
+                        data = ` WHERE SOUNDEX(CONCAT(m.first_name, ' ', m.last_name)) = SOUNDEX("${answer.managerName}") ORDER BY role.id`;
                     }
                     // WHERE SOUNDEX(CONCAT(m.first_name, ' ', m.last_name)) = SOUNDEX("xxx xxx")
 
-                    // console.log(query + data)
-
+                    console.log(query + data);
                     connection.query(query + data,
                         function (err, res) {
                             if (err) throw err;
@@ -301,9 +324,7 @@ function addEmployee(mainAnswer) {
                 name: "role_id",
                 choices: function () {
                     let titleArray = [];
-                    res.map(row => {
-                        if (row.title != null) titleArray.push(row.title);
-                    });
+                    res.map(row => { if (row.title != null) titleArray.push(row.title); });
                     titleArray = titleArray.filter((item, index) => {
                         return titleArray.indexOf(item) === index;
                     });
@@ -316,26 +337,88 @@ function addEmployee(mainAnswer) {
                 name: "manager_id",
                 choices: function () {
                     const nameArray = ["None"];
-                    res.map(row => {
-                        if (row.name != null) nameArray.push(row.name);
-                    });
+                    res.map(row => { if (row.name != null) nameArray.push(row.name); });
                     return nameArray;
                 },
                 message: "Who is the employee's Manager?",
             }
         ])
             .then(function (answer) {
+                if (answer.manager_id === "None") answer.manager_id = null;
                 res.map(row => {
                     if (row.name === answer.manager_id) answer.manager_id = row.e_id;
                     if (row.title === answer.role_id) answer.role_id = row.role_id;
                 });
-                console.log(`e.id = ${answer.manager_id}, role.id = ${answer.role_id}`);
+                console.log(`manager e.id = ${answer.manager_id}, role.id = ${answer.role_id}`);
                 const query = new Query("queryAddEmployee").queryResult;
                 console.log(answer);
                 connection.query(query, answer, function (err) {
                     if (err) throw err;
                     start();
                 });
+            });
+    });
+}
+function remove(mainAnswer) {
+    const query = new Query(mainAnswer).queryResult;
+    console.log(query);
+    connection.query(query, function (err, res) {
+        if (err) throw err;
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "id",
+                choices: function () {
+                    const nameArray = [];
+                    res.map(row => { nameArray.push(row.name); });
+                    return nameArray;
+                },
+                message: "Who would like to remove?",
+                when: function () {
+                    return mainAnswer === "Remove Employee";
+                }
+            },
+            {
+                type: "list",
+                name: "id",
+                choices: function () {
+                    const departArray = [];
+                    res.map(row => { departArray.push(row.name); });
+                    return departArray;
+                },
+                message: "Which department would like to remove?",
+                when: function () {
+                    return mainAnswer === "Remove Department";
+                }
+            },
+            {
+                type: "list",
+                name: "id",
+                choices: function () {
+                    const roleArray = [];
+                    res.map(row => { roleArray.push(row.name); });
+                    return roleArray;
+                },
+                message: "Which role would like to remove?",
+                when: function () {
+                    return mainAnswer === "Remove Role";
+                }
+            }
+        ])
+            .then(function (answer) {
+                res.map(row => { if (row.name === answer.id) answer.id = row.id });
+                console.log(answer);
+                let query;
+                if (mainAnswer === "Remove Employee") query = new Query("queryRemoveEmployee").queryResult;
+                else if (mainAnswer === "Remove Department") query = new Query("queryRemoveDepartment").queryResult;
+                else query = new Query("queryRemoveRole").queryResult;
+                connection.query(query, answer, function (err) {
+                    if (err) throw err;
+                    start();
+                })
+
+                // console.log(query);
+                // connection.end()
             });
     });
 }
