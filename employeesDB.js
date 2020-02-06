@@ -26,18 +26,20 @@ function start() {
             type: "list",
             name: "main_menu",
             message: "What would you like to do?",
-            choices: ["View All Employees", "View Departments", "View Roles", "Add Employee", "Add Department", "Add Role", "Update Employee Role", "Exit"]
-            // "Update Employee Manager", "View All Employees By Department", "View All Employees By Manager", "Remove Employee"
+            choices: ["View All Employees", "View All Employees By Department", "View All Employees By Manager", "View Departments", "View Roles", "Add Employee", "Add Department", "Add Role", "Update Employee Role", "Exit"]
+            // "Update Employee Manager", , , "Remove Employee"
         }
     ).then(function (answer) {
         switch (answer.main_menu) {
             case "View All Employees":
+            case "View All Employees By Department":
+            case "View All Employees By Manager":
             case "View Departments":
             case "View Roles":
                 view(answer.main_menu); //done
                 break;
             case "Add Employee":
-                addEmployee(answer.main_menu);
+                addEmployee(answer.main_menu); //done
                 break;
             case "Add Department":
                 addDepartment(answer.main_menu); //done
@@ -84,47 +86,51 @@ function addDepartment(mainAnswer) {
 }
 
 function addRole(mainAnswer) {
-    inquirer.prompt([
-        {
-            type: "input",
-            name: "title",
-            message: "Please enter role name to add",
-            validate: function (value) {
-                const pass = value.match(/^[a-zA-Z ]{2,30}$/);
-                if (pass) return true;
-                else return "Please enter a valid name. Press upwards arrow to re-enter your value";
+    const query = new Query(mainAnswer).queryResult;
+    connection.query(query, function (err, res) {
+        inquirer.prompt([
+            {
+                type: "input",
+                name: "title",
+                message: "Please enter role name to add",
+                validate: function (value) {
+                    const pass = value.match(/^[a-zA-Z ]{2,30}$/);
+                    if (pass) return true;
+                    else return "Please enter a valid name. Press upwards arrow to re-enter your value";
+                },
+                filter: function (value) {
+                    if (value.includes(" ")) {
+                        return value.split(" ").map(function (val) { return val.charAt(0).toUpperCase() + val.substring(1); }).join(" ");
+                    } else if (value.length > 1) return value.charAt(0).toUpperCase() + value.substring(1);
+                    else { return value.charAt(0).toUpperCase(); }
+                }
             },
-            filter: function (value) {
-                if (value.includes(" ")) {
-                    return value.split(" ").map(function (val) { return val.charAt(0).toUpperCase() + val.substring(1); }).join(" ");
-                } else if (value.length > 1) return value.charAt(0).toUpperCase() + value.substring(1);
-                else { return value.charAt(0).toUpperCase(); }
+            {
+                type: "input",
+                name: "salary",
+                message: "Please enter salary",
+                validate: function (value) {
+                    const valid = !isNaN(parseFloat(value));
+                    return valid || "Please enter a number. Press upwards arrow to re-enter your value";
+                }
+            },
+            {
+                type: "list",
+                name: "department_id",
+                message: "Please choose department name",
+                choices: function () {
+                    const departNames = [];
+                    res.map(row => { departNames.push(row.name); });
+                    return departNames;
+                }
             }
-        },
-        {
-            type: "input",
-            name: "salary",
-            message: "Please enter salary",
-            validate: function (value) {
-                const valid = !isNaN(parseFloat(value));
-                return valid || "Please enter a number. Press upwards arrow to re-enter your value";
-            }
-        },
-        {
-            type: "input",
-            name: "department_id",
-            message: "Please enter department id",
-            validate: function (value) {
-                const valid = !isNaN(parseFloat(value));
-                return valid || "Please enter a number. Press upwards arrow to re-enter your value";
-            }
-        }
-    ]).then(function (answer) {
-        const query = new Query(mainAnswer).queryResult;
-        console.log(query);
-        connection.query(query, answer, function (err) {
-            if (err) throw err;
-            start();
+        ]).then(function (answer) {
+            res.map(row => { if (row.name === answer.department_id) answer.department_id = row.id });
+            const query = new Query("queryAddRole").queryResult;
+            connection.query(query, answer, function (err) {
+                if (err) throw err;
+                start();
+            });
         });
     });
 }
@@ -185,8 +191,67 @@ function view(mainAnswer) {
     console.log(query);
     connection.query(query, function (err, res) {
         if (err) throw err;
-        console.table(res);
-        start();
+        if (mainAnswer === "View All Employees By Department" || mainAnswer === "View All Employees By Manager") {
+            inquirer.prompt([
+                {
+                    type: "list",
+                    name: "queryViewByDepartName",
+                    choices: function () {
+                        let departNames = [];
+                        res.map(row => { if (row.department != null) departNames.push(row.department); });
+                        departNames = departNames.filter((item, index) => {
+                            return departNames.indexOf(item) === index;
+                        });
+                        return departNames;
+                    },
+                    message: "Which department would you like to view?",
+                    when: function () {
+                        return mainAnswer === "View All Employees By Department";
+                    }
+                },
+                {
+                    type: "list",
+                    name: "queryViewByManagerName",
+                    choices: function () {
+                        let managerNames = [];
+                        res.map(row => { if (row.manager != null) managerNames.push(row.manager); });
+                        managerNames = managerNames.filter((item, index) => {
+                            return managerNames.indexOf(item) === index;
+                        });
+                        return managerNames;
+                    },
+                    message: "Which manager would you like to view?",
+                    when: function () {
+                        return mainAnswer === "View All Employees By Manager";
+                    }
+                }
+            ])
+                .then(function (answer) {
+                    const query = new Query(Object.keys(answer).toString()).queryResult;
+                    console.log(query);
+
+                    let data;
+                    if (mainAnswer === "View All Employees By Department") {
+                        data = ` WHERE name = "${answer.queryViewByDepartName}"`;
+                    }
+                    else {
+                        data = ` WHERE SOUNDEX(CONCAT(m.first_name, ' ', m.last_name)) = SOUNDEX("${answer.queryViewByManagerName}") ORDER BY role.id`;
+                    }
+                    // WHERE SOUNDEX(CONCAT(m.first_name, ' ', m.last_name)) = SOUNDEX("xxx xxx")
+
+                    // console.log(query + data)
+
+                    connection.query(query + data,
+                        function (err, res) {
+                            if (err) throw err;
+                            console.table(res);
+                            start();
+                        });
+                });
+        } else {
+            console.table(res);
+            start();
+        }
     });
 
     // connection.query(
@@ -207,7 +272,7 @@ function addEmployee(mainAnswer) {
         inquirer.prompt([
             {
                 type: "input",
-                name: "empFirstName",
+                name: "first_name",
                 message: "What is the employee's first name?",
                 validate: function (value) {
                     const pass = value.match(/^[a-zA-Z]{2,30}$/);
@@ -220,7 +285,7 @@ function addEmployee(mainAnswer) {
             },
             {
                 type: "input",
-                name: "empLastName",
+                name: "last_name",
                 message: "What is the employee's last name?",
                 validate: function (value) {
                     const pass = value.match(/^[a-zA-Z]{2,30}$/);
@@ -233,7 +298,7 @@ function addEmployee(mainAnswer) {
             },
             {
                 type: "list",
-                name: "empRole",
+                name: "role_id",
                 choices: function () {
                     let titleArray = [];
                     res.map(row => {
@@ -248,7 +313,7 @@ function addEmployee(mainAnswer) {
             },
             {
                 type: "list",
-                name: "empManager",
+                name: "manager_id",
                 choices: function () {
                     const nameArray = ["None"];
                     res.map(row => {
@@ -260,25 +325,17 @@ function addEmployee(mainAnswer) {
             }
         ])
             .then(function (answer) {
-                let employee_id, role_id;
                 res.map(row => {
-                    if (row.name === answer.empManager) employee_id = row.e_id;
-                    if (row.title === answer.empRole) role_id = row.role_id;
+                    if (row.name === answer.manager_id) answer.manager_id = row.e_id;
+                    if (row.title === answer.role_id) answer.role_id = row.role_id;
                 });
-                console.log(`e.id = ${employee_id}, role.id = ${role_id}`);
+                console.log(`e.id = ${answer.manager_id}, role.id = ${answer.role_id}`);
                 const query = new Query("queryAddEmployee").queryResult;
-                console.log(query);
-                connection.query(query,
-                    {
-                        first_name: answer.empFirstName,
-                        last_name: answer.empLastName,
-                        role_id: role_id,
-                        manager_id: employee_id
-                    },
-                    function (err) {
-                        if (err) throw err;
-                        start();
-                    });
+                console.log(answer);
+                connection.query(query, answer, function (err) {
+                    if (err) throw err;
+                    start();
+                });
             });
     });
 }
