@@ -40,10 +40,8 @@ function start() {
                 addEmployee(answer.main_menu); //done
                 break;
             case "Add Department":
-                addDepartment(answer.main_menu); //done
-                break;
             case "Add Role":
-                addRole(answer.main_menu); //done
+                addDeparmentOrRole(answer.main_menu); //done
                 break;
             case "Update Employee Role":
             case "Update Employee Manager":
@@ -61,38 +59,31 @@ function start() {
     })
 }
 
-function addDepartment(mainAnswer) {
-    inquirer.prompt(
-        {
-            type: "input",
-            name: "name",
-            message: "Please enter department name to add",
-            validate: function (value) {
-                const pass = value.match(/^[a-zA-Z ]{2,30}$/);
-                if (pass) return true;
-                else return "Please enter a valid name. Press upwards arrow to re-enter your value";
-            },
-            filter: function (value) {
-                if (value.includes(" ")) {
-                    return value.split(" ").map(function (val) { return val.charAt(0).toUpperCase() + val.substring(1); }).join(" ");
-                } else if (value.length > 1) return value.charAt(0).toUpperCase() + value.substring(1);
-                else { return value.charAt(0).toUpperCase(); }
-            }
-        },
-    ).then(function (answer) {
-        const query = new Query(mainAnswer).queryResult;
-        console.log(query);
-        connection.query(query, answer, function (err) {
-            if (err) throw err;
-            start();
-        });
-    });
-}
-
-function addRole(mainAnswer) {
-    const query = new Query(mainAnswer).queryResult;
+function addDeparmentOrRole(mainAnswer) {
+    let query = new Query(mainAnswer).queryResult;
+    console.log(query);
     connection.query(query, function (err, res) {
+        if (err) throw err;
         inquirer.prompt([
+            {
+                type: "input",
+                name: "name",
+                message: "Please enter department name to add",
+                validate: function (value) {
+                    const pass = value.match(/^[a-zA-Z ]{2,30}$/);
+                    if (pass) return true;
+                    else return "Please enter a valid name. Press upwards arrow to re-enter your value";
+                },
+                filter: function (value) {
+                    if (value.includes(" ")) {
+                        return value.split(" ").map(function (val) { return val.charAt(0).toUpperCase() + val.substring(1); }).join(" ");
+                    } else if (value.length > 1) return value.charAt(0).toUpperCase() + value.substring(1);
+                    else { return value.charAt(0).toUpperCase(); }
+                },
+                when: function () {
+                    return mainAnswer === "Add Department";
+                }
+            },
             {
                 type: "input",
                 name: "title",
@@ -107,6 +98,9 @@ function addRole(mainAnswer) {
                         return value.split(" ").map(function (val) { return val.charAt(0).toUpperCase() + val.substring(1); }).join(" ");
                     } else if (value.length > 1) return value.charAt(0).toUpperCase() + value.substring(1);
                     else { return value.charAt(0).toUpperCase(); }
+                },
+                when: function () {
+                    return mainAnswer === "Add Role";
                 }
             },
             {
@@ -116,6 +110,9 @@ function addRole(mainAnswer) {
                 validate: function (value) {
                     const valid = !isNaN(parseFloat(value));
                     return valid || "Please enter a number. Press upwards arrow to re-enter your value";
+                },
+                when: function () {
+                    return mainAnswer === "Add Role";
                 }
             },
             {
@@ -126,11 +123,17 @@ function addRole(mainAnswer) {
                     const departNames = [];
                     res.map(row => { departNames.push(row.name); });
                     return departNames;
+                },
+                when: function () {
+                    return mainAnswer === "Add Role";
                 }
             }
         ]).then(function (answer) {
-            res.map(row => { if (row.name === answer.department_id) answer.department_id = row.id });
-            const query = new Query("queryAddRole").queryResult;
+            if (mainAnswer === "Add Role") {
+                res.map(row => { if (row.name === answer.department_id) answer.department_id = row.id });
+                query = new Query("queryAddRole").queryResult;
+            } else query = new Query("queryAddDepartment").queryResult;
+            console.log(`query: ${query}, answer: ${answer}`);
             connection.query(query, answer, function (err) {
                 if (err) throw err;
                 start();
@@ -365,6 +368,7 @@ function addEmployee(mainAnswer) {
             });
     });
 }
+
 function remove(mainAnswer) {
     const query = new Query(mainAnswer).queryResult;
     console.log(query);
