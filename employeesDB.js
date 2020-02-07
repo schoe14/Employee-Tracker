@@ -8,7 +8,7 @@ const connection = mysql.createConnection({
     // Your port; if not 3306
     port: 3306,
     user: "root",
-    password: "Mintforme15_",
+    password: "",
     database: "employees_DB"
 });
 
@@ -24,14 +24,14 @@ function start() {
             type: "list",
             name: "main_menu",
             message: "What would you like to do?",
-            choices: ["View All Employees", "View All Employees By Department", "View All Employees By Manager", "View Departments", "View Roles", "Add Employee", "Add Department", "Add Role", "Update Employee Role", "Update Employee Manager", "Remove Employee", "Remove Department", "Remove Role", "Exit"]
-            // View the Total Utilized Budget of a Department
+            choices: ["View All Employees", "View All Employees By Department", "View All Employees By Manager", "View the Total Utilized Budget By Department", "View Departments", "View Roles", "Add Employee", "Add Department", "Add Role", "Update Employee Role", "Update Employee Manager", "Remove Employee", "Remove Department", "Remove Role", "Exit"]
         }
     ).then(function (answer) {
         switch (answer.main_menu) {
             case "View All Employees":
             case "View All Employees By Department":
             case "View All Employees By Manager":
+            case "View the Total Utilized Budget By Department":
             case "View Departments":
             case "View Roles":
                 view(answer.main_menu); //done
@@ -212,11 +212,12 @@ function update(mainAnswer) {
 }
 
 function view(mainAnswer) {
-    const query = new Query(mainAnswer).queryResult;
+    let query = new Query(mainAnswer).queryResult;
     console.log(query);
     connection.query(query, function (err, res) {
         if (err) throw err;
-        if (mainAnswer === "View All Employees By Department" || mainAnswer === "View All Employees By Manager") {
+        if (mainAnswer === "View All Employees By Department" || mainAnswer === "View All Employees By Manager" ||
+            mainAnswer === "View the Total Utilized Budget By Department") {
             inquirer.prompt([
                 {
                     type: "list",
@@ -231,7 +232,8 @@ function view(mainAnswer) {
                     },
                     message: "Which department would you like to view?",
                     when: function () {
-                        return mainAnswer === "View All Employees By Department";
+                        return mainAnswer === "View All Employees By Department" ||
+                            mainAnswer === "View the Total Utilized Budget By Department";
                     }
                 },
                 {
@@ -249,7 +251,7 @@ function view(mainAnswer) {
                     when: function () {
                         return mainAnswer === "View All Employees By Manager";
                     }
-                }
+                },
             ])
                 .then(function (answer) {
                     // const query = new Query(Object.keys(answer).toString()).queryResult;
@@ -258,10 +260,14 @@ function view(mainAnswer) {
                     if (mainAnswer === "View All Employees By Department") {
                         data = ` WHERE name = "${answer.departName}"`;
                     }
-                    else {
+                    else if (mainAnswer === "View All Employees By Manager") {
                         data = ` WHERE SOUNDEX(CONCAT(m.first_name, ' ', m.last_name)) = SOUNDEX("${answer.managerName}") ORDER BY role.id`;
                     }
                     // WHERE SOUNDEX(CONCAT(m.first_name, ' ', m.last_name)) = SOUNDEX("xxx xxx")
+                    else {
+                        query = new Query("queryTotalBudget").queryResult;
+                        data = ` WHERE name = "${answer.departName}" GROUP BY name`
+                    }
 
                     console.log(query + data);
                     connection.query(query + data,
