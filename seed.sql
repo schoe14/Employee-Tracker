@@ -1,29 +1,3 @@
-DROP DATABASE IF EXISTS employees_DB;
-CREATE DATABASE employees_DB;
-USE employees_DB;
-CREATE TABLE department (
-  id INT NOT NULL AUTO_INCREMENT,
-  name VARCHAR(30),
-  PRIMARY KEY (id)
-);
-CREATE TABLE role (
-  id INT NOT NULL AUTO_INCREMENT,
-  title VARCHAR(30),
-  salary DECIMAL,
-  department_id INT,
-  PRIMARY KEY (id),
-  FOREIGN KEY (department_id) REFERENCES department(id) ON DELETE SET NULL
-);
-CREATE TABLE employee (
-  id INT NOT NULL AUTO_INCREMENT,
-  first_name VARCHAR(30),
-  last_name VARCHAR(30),
-  role_id INT,
-  manager_id INT,
-  PRIMARY KEY (id),
-  FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE SET NULL,
-  FOREIGN KEY (manager_id) REFERENCES employee(id) ON DELETE SET NULL
-);
 INSERT INTO department (name)
 VALUES
   ("Engineering"),
@@ -44,7 +18,14 @@ VALUES
 INSERT INTO employee (first_name, last_name, role_id, manager_id)
 VALUES
   ("Tae", "Kim", 1, null),
+  ("Sarah", "Oliver", 1, null),
   ("John", "Doe", 2, 1),
-  ("Alison", "Star", 3, 1);
+  ("Alison", "Star", 3, 1),
+  ("Annie", "Simmons", 4, null),
+  ("David", "Dell", 5, 4),
+  ("Chris", "Spears", 6, null),
+  ("Brook", "Elvis", 7, 6),
+  ("Megan", "Jannis", 8, null),
+  ("Ed", "Smith", 9, 8);
+
   
-ALTER USER 'root' @'localhost' IDENTIFIED WITH mysql_native_password BY 'yourpasswordhere'

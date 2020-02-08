@@ -1,23 +1,43 @@
 const mysql = require("mysql");
 const inquirer = require("inquirer");
+// Helper class that generates query string
 const Query = require("./lib/Query");
 const cTable = require("console.table");
+const chalk = require("chalk");
+const figlet = require("figlet");
+// Because of reaching MaxListeners, added this code to change the max
+// Should be fixed if MVC used
+require('events').EventEmitter.defaultMaxListeners = 20;
 
 const connection = mysql.createConnection({
     host: "localhost",
     // Your port; if not 3306
     port: 3306,
     user: "root",
-    password: "",
+    password: "Your Password Goes Here",
     database: "employees_DB"
 });
 
 connection.connect(function (err) {
     if (err) throw err;
-    console.log("connected as id " + connection.threadId + "\n");
-    start();
+    // figlet function to make intro CLI
+    figlet.text('Employee Tracker', {
+        font: 'Big',
+        horizontalLayout: 'default',
+        verticalLayout: 'default'
+    }, function (err, data) {
+        if (err) {
+            console.dir(err);
+            return;
+        }
+        // chalk to change the color of intro
+        console.log(chalk.blueBright(data));
+        start();
+    });
 });
 
+// Initiate the user choices
+// Goes to each function depending on the user's choice
 function start() {
     inquirer.prompt(
         {
@@ -34,23 +54,23 @@ function start() {
             case "View the Total Utilized Budget By Department":
             case "View Departments":
             case "View Roles":
-                view(answer.main_menu); //done
+                view(answer.main_menu);
                 break;
             case "Add Employee":
-                addEmployee(answer.main_menu); //done
+                addEmployee(answer.main_menu);
                 break;
             case "Add Department":
             case "Add Role":
-                addDeparmentOrRole(answer.main_menu); //done
+                addDeparmentOrRole(answer.main_menu);
                 break;
             case "Update Employee Role":
             case "Update Employee Manager":
-                update(answer.main_menu); //done
+                update(answer.main_menu);
                 break;
             case "Remove Employee":
             case "Remove Department":
             case "Remove Role":
-                remove(answer.main_menu); //done
+                remove(answer.main_menu);
                 break;
             case "Exit":
                 connection.end();
@@ -59,9 +79,9 @@ function start() {
     })
 }
 
+// For all functions below: first query to give users choices and second query to generate output ----------------
 function addDeparmentOrRole(mainAnswer) {
     let query = new Query(mainAnswer).queryResult;
-    console.log(query);
     connection.query(query, function (err, res) {
         if (err) throw err;
         inquirer.prompt([
@@ -133,7 +153,6 @@ function addDeparmentOrRole(mainAnswer) {
                 res.map(row => { if (row.name === answer.department_id) answer.department_id = row.id });
                 query = new Query("queryAddRole").queryResult;
             } else query = new Query("queryAddDepartment").queryResult;
-            console.log(`query: ${query}, answer: ${answer}`);
             connection.query(query, answer, function (err) {
                 if (err) throw err;
                 start();
@@ -144,7 +163,6 @@ function addDeparmentOrRole(mainAnswer) {
 
 function update(mainAnswer) {
     const query = new Query(mainAnswer).queryResult;
-    console.log(query);
     connection.query(query, function (err, res) {
         if (err) throw err;
         inquirer.prompt([
@@ -178,7 +196,7 @@ function update(mainAnswer) {
                 type: "list",
                 name: "changeTo_id",
                 choices: function () {
-                    const nameArray = [];
+                    const nameArray = ["None"];
                     res.map(row => { if (row.name != null) nameArray.push(row.name); });
                     return nameArray;
                 },
@@ -201,11 +219,10 @@ function update(mainAnswer) {
                     res.map(row => {
                         if (row.name === answer.id) answer.id = row.e_id;
                         if (row.name === answer.changeTo_id) answer.changeTo_id = row.e_id;
+                        if (answer.changeTo_id === "None") answer.changeTo_id = null;
                     });
                     query = new Query("queryUpdateManager").queryResult;
                 }
-                console.log(answer);
-                console.log(query);
                 connection.query(query, [answer.changeTo_id, answer.id], function (err) {
                     if (err) throw err;
                     start();
@@ -216,7 +233,6 @@ function update(mainAnswer) {
 
 function view(mainAnswer) {
     let query = new Query(mainAnswer).queryResult;
-    console.log(query);
     connection.query(query, function (err, res) {
         if (err) throw err;
         if (mainAnswer === "View All Employees By Department" || mainAnswer === "View All Employees By Manager" ||
@@ -257,8 +273,6 @@ function view(mainAnswer) {
                 },
             ])
                 .then(function (answer) {
-                    // const query = new Query(Object.keys(answer).toString()).queryResult;
-
                     let data;
                     if (mainAnswer === "View All Employees By Department") {
                         data = ` WHERE name = "${answer.departName}"`;
@@ -266,13 +280,11 @@ function view(mainAnswer) {
                     else if (mainAnswer === "View All Employees By Manager") {
                         data = ` WHERE SOUNDEX(CONCAT(m.first_name, ' ', m.last_name)) = SOUNDEX("${answer.managerName}") ORDER BY role.id`;
                     }
-                    // WHERE SOUNDEX(CONCAT(m.first_name, ' ', m.last_name)) = SOUNDEX("xxx xxx")
                     else {
                         query = new Query("queryTotalBudget").queryResult;
                         data = ` WHERE name = "${answer.departName}" GROUP BY name`
                     }
 
-                    console.log(query + data);
                     connection.query(query + data,
                         function (err, res) {
                             if (err) throw err;
@@ -285,20 +297,10 @@ function view(mainAnswer) {
             start();
         }
     });
-
-    // connection.query(
-    //     "SELECT e.id AS id, e.first_name, e.last_name, title, name AS department, salary, CONCAT(m.first_name, ' ', m.last_name) AS manager FROM employee e LEFT JOIN employee m ON m.id = e.manager_id LEFT JOIN role ON e.role_id = role.id LEFT JOIN department ON role.department_id = department.id",
-    //     function (err, res) {
-    //         if (err) throw err;
-    //         console.table(res);
-    //         start();
-    //     }
-    // );
 }
 
 function addEmployee(mainAnswer) {
     const query = new Query(mainAnswer).queryResult;
-    console.log(query);
     connection.query(query, function (err, res) {
         if (err) throw err;
         inquirer.prompt([
@@ -358,9 +360,7 @@ function addEmployee(mainAnswer) {
                     if (row.name === answer.manager_id) answer.manager_id = row.e_id;
                     if (row.title === answer.role_id) answer.role_id = row.role_id;
                 });
-                console.log(`manager e.id = ${answer.manager_id}, role.id = ${answer.role_id}`);
                 const query = new Query("queryAddEmployee").queryResult;
-                console.log(answer);
                 connection.query(query, answer, function (err) {
                     if (err) throw err;
                     start();
@@ -371,7 +371,6 @@ function addEmployee(mainAnswer) {
 
 function remove(mainAnswer) {
     const query = new Query(mainAnswer).queryResult;
-    console.log(query);
     connection.query(query, function (err, res) {
         if (err) throw err;
         inquirer.prompt([
@@ -417,7 +416,6 @@ function remove(mainAnswer) {
         ])
             .then(function (answer) {
                 res.map(row => { if (row.name === answer.id) answer.id = row.id });
-                console.log(answer);
                 let query;
                 if (mainAnswer === "Remove Employee") query = new Query("queryRemoveEmployee").queryResult;
                 else if (mainAnswer === "Remove Department") query = new Query("queryRemoveDepartment").queryResult;
@@ -426,91 +424,6 @@ function remove(mainAnswer) {
                     if (err) throw err;
                     start();
                 })
-
-                // console.log(query);
-                // connection.end()
             });
     });
 }
-
-// async function addEmployee() {
-//     try {
-//         const roleArray = [];
-//         const nameArray = [{ id: null, name: "None" }];
-//         const roleQuery = new Query("queryRoles").queryResult;
-//         const nameQuery = new Query("queryNames").queryResult;
-
-//         const queryRoles = connection.query(roleQuery, function (err, res) {
-//             if (err) throw err;
-//             res.map(row => { roleArray.push({ id: row.id, title: row.title }); });
-//         });
-
-//         const queryNames = connection.query(nameQuery, function (err, res) {
-//             if (err) throw err;
-//             res.map(row => { nameArray.push({ id: row.id, name: row.name }); });
-//         });
-
-//         const userInput = await inquirer.prompt([
-//             {
-//                 type: "input",
-//                 name: "empFirstName",
-//                 message: "What is the employee's first name?",
-//                 validate: function (value) {
-//                     const pass = value.match(/^[a-zA-Z]{2,30}$/);
-//                     if (pass) return true;
-//                     else return "Please enter a valid name. Press upwards arrow to re-enter your value";
-//                 },
-//                 filter: function (value) {
-//                     return value.charAt(0).toUpperCase() + value.substring(1);
-//                 }
-//             },
-//             {
-//                 type: "input",
-//                 name: "empLastName",
-//                 message: "What is the employee's last name?",
-//                 validate: function (value) {
-//                     const pass = value.match(/^[a-zA-Z]{2,30}$/);
-//                     if (pass) return true;
-//                     else return "Please enter a valid name. Press upwards arrow to re-enter your value";
-//                 },
-//                 filter: function (value) {
-//                     return value.charAt(0).toUpperCase() + value.substring(1);
-//                 }
-//             },
-//             {
-//                 type: "list",
-//                 name: "empRole",
-//                 choices: function () {
-//                     const titleOnly = roleArray.map(role => { return role.title; });
-//                     return titleOnly;
-//                 },
-//                 message: "What is the employee's role?"
-//             },
-//             {
-//                 type: "list",
-//                 name: "empManager",
-//                 choices: function () {
-//                     const nameOnly = nameArray.map(name => { return name.name; });
-//                     return nameOnly;
-//                 },
-//                 message: "Who is the employee's Manager?",
-//             }
-//         ]).then(function (answer) {
-//             connection.query(
-//                 "INSERT INTO employee SET ?",
-//                 {
-//                     first_name: answer.empFirstName,
-//                     last_name: answer.empLastName,
-//                     role_id: roleArray.find(role => role.title === answer.empRole).id,
-//                     manager_id: nameArray.find(manager => manager.name === answer.empManager).id
-//                 },
-//                 function (err) {
-//                     if (err) throw err;
-//                     start();
-//                 }
-//             );
-//         });
-//     } catch (e) {
-//         console.log('error', e);
-//     }
-// }
