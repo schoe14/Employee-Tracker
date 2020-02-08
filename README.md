@@ -1,7 +1,7 @@
 # Employee-Tracker
 :page_with_curl: Content Management Systems application that enables users to collect employee information upon their unique request.
 <br>
-Databases queried by users :mag: consist of:
+:mag: Databases queried by users consist of:
 * View All Employees
 * View All Employees By Department
 * View All Employees By Manager
@@ -37,7 +37,7 @@ To run this project:
     password: "Your Password Goes Here",
     database: "employees_DB"
 });
-4. Make sure data in schema.sql and seed.sql goes through MySQL :calling:
 </pre>
+4. Make sure data in schema.sql and seed.sql goes through MySQL :calling:
 5. Command :+1:
 <pre> npm start </pre>
