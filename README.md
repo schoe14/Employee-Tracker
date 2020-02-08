@@ -1,7 +1,15 @@
 # Employee-Tracker
 :page_with_curl: Content Management Systems application that enables users to collect employee information upon their unique request.
 <br>
-Databases queried by users :mag: consist of View All Employees, View All Employees By Department, View All Employees By Manager, View the Total Utilized Budget By Department, View Departments, View Roles, Add Employee, Add Department, Add Role, Update Employee Role, Update Employee Manager, Remove Employee, Remove Department and Remove Role. 
+Databases queried by users :mag: consist of:
+* View All Employees
+* View All Employees By Department
+* View All Employees By Manager
+* View the Total Utilized Budget By Department
+* View Departments/Roles
+* Add Employee/Department/Role
+* Update Employee Role/Employee Manager
+* Remove Employee/Department/Role 
 
 # Screenshots
 <img src="./assets/demo/demo.gif" style="float: left">
@@ -26,7 +34,7 @@ To run this project:
     // Your port; if not 3306
     port: 3306,
     user: "root",
-    password: "Your Password Goes Here", :point_left:
+    password: "Your Password Goes Here",
     database: "employees_DB"
 });
 4. Make sure data in schema.sql and seed.sql goes through MySQL :calling:
