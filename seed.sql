@@ -22,10 +22,10 @@ VALUES
   ("John", "Doe", 2, 1),
   ("Alison", "Star", 3, 1),
   ("Annie", "Simmons", 4, null),
-  ("David", "Dell", 5, 4),
+  ("David", "Dell", 5, 5),
   ("Chris", "Spears", 6, null),
-  ("Brook", "Elvis", 7, 6),
+  ("Brook", "Elvis", 7, 7),
   ("Megan", "Jannis", 8, null),
-  ("Ed", "Smith", 9, 8);
+  ("Ed", "Smith", 9, 9);
 
   

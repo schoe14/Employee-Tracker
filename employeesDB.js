@@ -7,33 +7,26 @@ const chalk = require("chalk");
 const figlet = require("figlet");
 // Because of reaching MaxListeners, added this code to change the max
 // Should be fixed if MVC used
-require('events').EventEmitter.defaultMaxListeners = 20;
+require('events').EventEmitter.defaultMaxListeners = 30;
 
 const connection = mysql.createConnection({
     host: "localhost",
     // Your port; if not 3306
     port: 3306,
     user: "root",
-    password: "Your Password Goes Here",
+    password: "Your Password Goes Here", 
     database: "employees_DB"
 });
 
 connection.connect(function (err) {
     if (err) throw err;
     // figlet function to make intro CLI
-    figlet.text('Employee Tracker', {
+    console.log(chalk.blueBright(figlet.textSync('Employee Tracker', {
         font: 'Big',
         horizontalLayout: 'default',
         verticalLayout: 'default'
-    }, function (err, data) {
-        if (err) {
-            console.dir(err);
-            return;
-        }
-        // chalk to change the color of intro
-        console.log(chalk.blueBright(data));
-        start();
-    });
+    })));
+    start();
 });
 
 // Initiate the user choices
@@ -73,10 +66,19 @@ function start() {
                 remove(answer.main_menu);
                 break;
             case "Exit":
-                connection.end();
+                end();
                 break;
         }
     })
+}
+
+function end() {
+    console.log(chalk.greenBright(figlet.textSync('Thank you !', {
+        font: 'Big',
+        horizontalLayout: 'default',
+        verticalLayout: 'default'
+    })));
+    connection.end();
 }
 
 // For all functions below: first query to give users choices and second query to generate output ----------------
